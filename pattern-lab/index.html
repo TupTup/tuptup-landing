@@ -182,8 +182,16 @@ if(updated){blocks=updated;notice('');render();}else notice('Nie można zmienić
 return;
 }
 const tx=p.x-drag.dx,ty=p.y-drag.dy;
-const candidate={...b,x:tx,y:ty};
-if(!others.some(other=>overlap(candidate,other))){b.x=tx;b.y=ty;notice('');render();}
+const options=[{x:tx,y:ty,d:Infinity}],range=1.5;
+for(const fixed of others){
+const v=Math.min(ty+b.h,fixed.y+fixed.h)-Math.max(ty,fixed.y);
+const u=Math.min(tx+b.w,fixed.x+fixed.w)-Math.max(tx,fixed.x);
+if(v>0)for(const x of [fixed.x-b.w,fixed.x+fixed.w])if(Math.abs(x-tx)<range)options.push({x,y:ty,d:Math.abs(x-tx)});
+if(u>0)for(const y of [fixed.y-b.h,fixed.y+fixed.h])if(Math.abs(y-ty)<range)options.push({x:tx,y,d:Math.abs(y-ty)});
+}
+options.sort((a,b)=>a.d-b.d);
+const chosen=options.find(o=>!others.some(f=>overlap({...b,x:o.x,y:o.y},f)));
+if(chosen){b.x=chosen.x;b.y=chosen.y;notice('');render();}
 else notice('Klocek nie może nachodzić na inny prostokąt.');
 });
 function endDrag(){if(!drag)return;drag=null;svg.classList.remove('dragging');render();}
