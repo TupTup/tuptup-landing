@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tup Pattern Lab — klocki zespolone</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17253c;background:#f5f8fc}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1100px;margin:auto;padding:28px 18px 64px}header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}h1{font-size:clamp(25px,4vw,37px);margin:12px 0 5px}p{color:#526177;line-height:1.5}a{color:#245d9b;text-decoration:none}.tag{font-size:12px;background:#e5edf8;padding:6px 10px;border-radius:100px}.layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:18px;margin-top:22px}.card{background:#fff;border:1px solid #e1e8f1;border-radius:17px;padding:20px;box-shadow:0 4px 20px #1b355b08}.card h2{font-size:17px;margin:0 0 16px}.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:15px}.tabs button{border:1px solid #d5dfed;background:#f7faff;padding:11px 4px;border-radius:10px;font-weight:700;font-size:18px;cursor:pointer;color:#30435f}.tabs button.active{background:#245d9b;color:white;border-color:#245d9b}svg{display:block;width:100%;height:auto;border-radius:12px;background:#f8fbff}.line{display:flex;justify-content:space-between;gap:12px;margin:19px 0 7px;font-size:14px}.line output{font-variant-numeric:tabular-nums;color:#245d9b;font-weight:700}input[type=range]{width:100%;accent-color:#245d9b}label{cursor:pointer}.check{display:flex;align-items:center;gap:8px;margin-top:13px;color:#53647c;font-size:13px}.block{border-top:1px solid #e5ebf2;padding:14px 0}.block:first-child{border-top:0;padding-top:0}.block strong{display:block;margin-bottom:8px}.data{display:grid;grid-template-columns:1fr 1fr;gap:8px}.datum{background:#f3f7fc;border-radius:9px;padding:10px;min-width:0}.datum small{display:block;color:#66748a;margin-bottom:4px}.datum span{font-size:13px;font-weight:650;overflow-wrap:anywhere}.muted{font-size:12px;color:#6c7c91;margin-top:8px}.btn{border:1px solid #ccd8e8;background:#fff;border-radius:9px;padding:10px 14px;cursor:pointer;color:#244a78;font-weight:600}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.foot{font-size:13px;margin-top:18px}@media(max-width:750px){.layout{grid-template-columns:1fr}.wrap{padding-top:16px}.card{padding:16px}}
+</style></head><body><div class="wrap">
+<header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi.</p></div><a href="../">TupTup ↗</a></header>
+<div class="layout"><section class="card"><h2>Model budynku</h2><div class="tabs" id="tabs"></div>
+<svg id="scene" viewBox="0 0 620 420" role="img" aria-label="Rzut budynku z prostokątnych klocków"></svg>
+<label class="check"><input id="axes" type="checkbox" checked> Pokaż osie klocków</label>
+<div id="sliders"></div><div class="actions"><button class="btn" id="reset">Przywróć parametry</button></div></section>
+<section class="card"><h2>Deskryptor zespolony</h2><p>Każdy klocek: środek z = x + yi, wektor osi v = Δx + Δyi oraz szerokość w.</p><div id="values"></div><div class="actions"><button class="btn" id="copy">Kopiuj model</button><button class="btn" id="json">Pobierz JSON</button></div></section></div>
+<p class="foot">To demonstrator geometrii, nie automatyczna dekompozycja footprintu. Przecięcie prostokątów nie potwierdza istnienia przejścia w budynku.</p>
+</div><script>
+const defaults={shape:'U',length:48,width:12,span:36,offset:0,angle:0,axes:true};
+let s={...defaults};
+const colors=['#4f8bc9','#2ea38d','#d59b45'];
+const controls=[['length','Długość ramion',20,55,'m'],['width','Szerokość klocka',6,18,'m'],['span','Rozstaw / długość poprzeczki',20,60,'m'],['offset','Przesunięcie poprzeczki',-18,18,'m'],['angle','Obrót budynku',-90,90,'°']];
+const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1);
+const complex=(x,y)=>fmt(x)+(y<-.05?' − ':' + ')+fmt(Math.abs(y))+'i';
+function blocks(){const {length:L,width:W,span:S,offset:O,shape}=s;
+const b=(x,y,dx,dy,w)=>({x,y,dx,dy,w});
+switch(shape){case 'I':return [b(0,0,0,L,W)];case 'L':return [b(-S/2,0,0,L,W),b(0,-L/2,S,0,W)];case 'U':return [b(-S/2,0,0,L,W),b(S/2,0,0,L,W),b(0,-L/2+W/2,S+W,0,W)];case 'H':return [b(-S/2,0,0,L,W),b(S/2,0,0,L,W),b(0,O,S+W,0,W)];case 'T':return [b(0,0,0,L,W),b(O,L/2-W/2,S+W,0,W)];}}
+function model(){const a=s.angle*Math.PI/180,c=Math.cos(a),t=Math.sin(a);return blocks().map((b,i)=>({...b,id:i+1,z:{re:b.x*c-b.y*t,im:b.x*t+b.y*c},v:{re:b.dx*c-b.dy*t,im:b.dx*t+b.dy*c}}));}
+function draw(){const m=model();const scene=document.getElementById('scene');const parts=[];
+for(let x=20;x<=600;x+=25)parts.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="420" stroke="#dfe8f3"/>');
+for(let y=10;y<=410;y+=25)parts.push('<line x1="0" y1="'+y+'" x2="620" y2="'+y+'" stroke="#dfe8f3"/>');
+parts.push('<line x1="310" y1="0" x2="310" y2="420" stroke="#9caec4" stroke-dasharray="5 5"/><line x1="0" y1="210" x2="620" y2="210" stroke="#9caec4" stroke-dasharray="5 5"/>');
+for(const [i,b] of m.entries()){const len=Math.hypot(b.dx,b.dy),axis=Math.atan2(b.dy,b.dx)*180/Math.PI;
+parts.push('<g transform="translate(310 210) scale(3.0 -3.0) translate('+b.x+' '+b.y+') rotate('+s.angle+') rotate('+axis+')"><rect x="'+(-len/2)+'" y="'+(-b.w/2)+'" width="'+len+'" height="'+b.w+'" fill="'+colors[i]+'" fill-opacity=".40" stroke="'+colors[i]+'" stroke-width=".65"/>'+(s.axes?'<line x1="'+(-len/2)+'" x2="'+(len/2)+'" y1="0" y2="0" stroke="'+colors[i]+'" stroke-width=".75" stroke-dasharray="3 2"/>':'')+'</g>');
+parts.push('<circle cx="'+(310+b.z.re*3)+'" cy="'+(210-b.z.im*3)+'" r="4.5" fill="'+colors[i]+'" stroke="white" stroke-width="1.5"/>');
+parts.push('<text x="'+(319+b.z.re*3)+'" y="'+(201-b.z.im*3)+'" font-size="14" font-weight="700" fill="'+colors[i]+'">B'+(i+1)+'</text>');}
+parts.push('<text x="602" y="201" font-size="12" fill="#6b7d92">Re</text><text x="320" y="18" font-size="12" fill="#6b7d92">Im</text>');
+scene.innerHTML=parts.join('');
+document.getElementById('values').innerHTML=m.map((b,i)=>'<div class="block"><strong style="color:'+colors[i]+'">B'+b.id+'</strong><div class="data"><div class="datum"><small>Środek z</small><span>'+complex(b.z.re,b.z.im)+'</span></div><div class="datum"><small>Wektor v</small><span>'+complex(b.v.re,b.v.im)+'</span></div></div><div class="muted">Długość: '+fmt(Math.hypot(b.dx,b.dy))+' m · szerokość: '+b.w+' m · kąt: '+fmt(Math.atan2(b.v.im,b.v.re)*180/Math.PI)+'°</div></div>').join('');
+}
+function render(){document.getElementById('tabs').innerHTML=['I','L','U','H','T'].map(v=>'<button type="button" data-shape="'+v+'" class="'+(s.shape===v?'active':'')+'">'+v+'</button>').join('');
+document.querySelectorAll('[data-shape]').forEach(el=>el.onclick=()=>{s.shape=el.dataset.shape;render()});
+document.getElementById('sliders').innerHTML=controls.filter(([key])=>key!=='offset'||['H','T'].includes(s.shape)).map(([key,label,min,max,unit])=>'<div class="line"><label for="'+key+'">'+label+'</label><output id="out-'+key+'">'+s[key]+' '+unit+'</output></div><input type="range" id="'+key+'" min="'+min+'" max="'+max+'" value="'+s[key]+'" step="1">').join('');
+for(const [key,,, ,unit] of controls){const el=document.getElementById(key);if(el)el.oninput=()=>{s[key]=Number(el.value);document.getElementById('out-'+key).textContent=s[key]+' '+unit;draw()};}
+document.getElementById('axes').checked=s.axes;draw();}
+document.getElementById('axes').onchange=e=>{s.axes=e.target.checked;draw()};
+document.getElementById('reset').onclick=()=>{s={...defaults,shape:s.shape};render()};
+document.getElementById('copy').onclick=async()=>{const text=model().map(b=>'B'+b.id+': z='+complex(b.z.re,b.z.im)+', v='+complex(b.v.re,b.v.im)+', w='+b.w).join('\n');try{await navigator.clipboard.writeText(text);document.getElementById('copy').textContent='Skopiowano'}catch{window.prompt('Skopiuj model:',text)}};
+document.getElementById('json').onclick=()=>{const data=JSON.stringify({shape:s.shape,blocks:model().map(({id,z,v,w})=>({id,z,v,width:w}))},null,2);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download='tup-pattern-'+s.shape+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+render();
+</script></body></html>
