@@ -7,7 +7,7 @@
 </style></head><body><div class="wrap">
 <header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi. Obrót na podglądzie nie zmienia lokalnego deskryptora zespolonego.</p></div><a href="../">TupTup ↗</a></header>
 <div class="layout"><section class="card"><h2>Edytor klocków</h2>
-<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby go przesuwać, albo uchwyty na czterech krawędziach, aby zmieniać długość i szerokość. Klocki pozostają połączone bez nakładania.</p>
+<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby go przesuwać, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Klocki pozostają połączone bez nakładania.</p>
 <div class="tabs" id="tabs"></div>
 <svg id="scene" viewBox="0 0 900 620" role="img" aria-label="Edytor rzutu budynku: przeciągaj klocki"></svg>
 <div class="toolrow"><button class="primary" id="add">+ Dodaj klocek</button><button id="remove">Usuń zaznaczony</button><button id="reset">Reset szablonu</button></div>
@@ -72,8 +72,12 @@ if(axes){const x=b.x+b.w/2,y=b.y+b.h/2;
 parts.push('<line x1="'+(b.w>=b.h?b.x:x)+'" y1="'+(b.w>=b.h?y:b.y)+'" x2="'+(b.w>=b.h?b.x+b.w:x)+'" y2="'+(b.w>=b.h?y:b.y+b.h)+'" stroke="'+stroke+'" stroke-width=".65" stroke-dasharray="2 1.5" pointer-events="none"/>');}
 });
 const active=blocks.find(b=>b.id===selected);
-if(active){const b=active,handleSize=8/scale,positions=[['w',b.x,b.y+b.h/2],['e',b.x+b.w,b.y+b.h/2],['s',b.x+b.w/2,b.y],['n',b.x+b.w/2,b.y+b.h]];
-for(const [edge,x,y] of positions)parts.push('<rect data-resize="'+edge+'" data-id="'+b.id+'" x="'+(x-handleSize/2)+'" y="'+(y-handleSize/2)+'" width="'+handleSize+'" height="'+handleSize+'" fill="#fff" stroke="#173d6b" stroke-width="'+(1.5/scale)+'"/>');}
+if(active){const b=active,hit=18/scale;
+const edges=[['w',b.x,b.y,b.x,b.y+b.h],['e',b.x+b.w,b.y,b.x+b.w,b.y+b.h],['s',b.x,b.y,b.x+b.w,b.y],['n',b.x,b.y+b.h,b.x+b.w,b.y+b.h]];
+for(const [edge,x1,y1,x2,y2] of edges){
+parts.push('<line data-resize="'+edge+'" data-id="'+b.id+'" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="transparent" stroke-width="'+hit+'" pointer-events="stroke"/>');
+}
+}
 parts.push('</g>');
 blocks.forEach((b,i)=>{const x=b.x+b.w/2-c.x,y=b.y+b.h/2-c.y,rx=x*cs-y*sn,ry=x*sn+y*cs;parts.push('<text x="'+(450+rx*scale+8)+'" y="'+(310-ry*scale-8)+'" font-size="13" font-weight="700" fill="'+color(i)+'" pointer-events="none">B'+b.id+'</text>');});
 parts.push('<circle cx="450" cy="310" r="4.5" fill="#17253c" stroke="white" stroke-width="2" pointer-events="none"/><text x="459" y="326" font-size="11" fill="#17253c">Centroid</text>');
