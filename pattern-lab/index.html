@@ -36,13 +36,13 @@ H:[[-30,-24,12,48],[18,-24,12,48],[-18,-6,36,12]],
 T:[[-6,-24,12,36],[-30,12,60,12]]
 };
 const colors=['#4f8bc9','#2ea38d','#d59b45','#9565bc','#d67c83','#47a5b6','#8b9c4a'];
-let blocks=[],selected=null,nextId=1,shape='U',angle=0,axes=true,drag=null,scale=3,geoRings=[],geoVisible=true,geoMove=false,geoOffset={x:0,y:0};
+let blocks=[],selected=null,nextId=1,shape='U',angle=0,axes=true,drag=null,scale=3,geoRings=[],geoVisible=true,geoMove=false,geoOffset={x:0,y:0},viewCenter=null,viewScale=null;
 const svg=document.getElementById('scene');
 const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1);
 const complex=(x,y)=>fmt(x)+(y<-.05?' − ':' + ')+fmt(Math.abs(y))+'i';
 const eps=1e-6;
 function rect(x,y,w,h){return {id:nextId++,x,y,w,h};}
-function load(name){shape=name;nextId=1;blocks=templates[name].map(p=>rect(...p));selected=blocks[0].id;drag=null;notice('');render();}
+function load(name){shape=name;nextId=1;blocks=templates[name].map(p=>rect(...p));selected=blocks[0].id;drag=null;viewCenter=centroid();viewScale=null;notice('');render();}
 function overlap(a,b){return Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)>eps&&Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)>eps;}
 function adjacent(a,b){const v=Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y),h=Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x);
 return (v>eps&&(Math.abs(a.x+a.w-b.x)<eps||Math.abs(b.x+b.w-a.x)<eps))||(h>eps&&(Math.abs(a.y+a.h-b.y)<eps||Math.abs(b.y+b.h-a.y)<eps));}
@@ -115,17 +115,17 @@ if(result.some(r=>r.length<3))throw Error('Poligon wymaga co najmniej trzech pun
 return result;
 }
 function geoBounds(){return geoRings.flat().map(p=>({x:p.x+geoOffset.x,y:p.y+geoOffset.y}));}
-document.getElementById('geo-load').onclick=()=>{try{const rings=parseGeoJSON(document.getElementById('geo-input').value);geoRings=rings;geoOffset={x:0,y:0};geoVisible=true;document.getElementById('geo-visible').checked=true;document.getElementById('geo-status').textContent='Wczytano '+rings.length+' pierścieni. Podkład wycentrowany względem centroidu budynku.';draw();}catch(e){document.getElementById('geo-status').textContent='Błąd: '+e.message;}};
-document.getElementById('geo-clear').onclick=()=>{geoRings=[];geoOffset={x:0,y:0};document.getElementById('geo-input').value='';document.getElementById('geo-status').textContent='Brak podkładu.';draw();};
+document.getElementById('geo-load').onclick=()=>{try{const rings=parseGeoJSON(document.getElementById('geo-input').value);geoRings=rings;geoOffset={x:0,y:0},viewCenter=null,viewScale=null;geoVisible=true;document.getElementById('geo-visible').checked=true;document.getElementById('geo-status').textContent='Wczytano '+rings.length+' pierścieni. Podkład wycentrowany względem centroidu budynku.';draw();}catch(e){document.getElementById('geo-status').textContent='Błąd: '+e.message;}};
+document.getElementById('geo-clear').onclick=()=>{geoRings=[];geoOffset={x:0,y:0},viewCenter=null,viewScale=null;document.getElementById('geo-input').value='';document.getElementById('geo-status').textContent='Brak podkładu.';draw();};
 document.getElementById('geo-visible').onchange=e=>{geoVisible=e.target.checked;draw();};
 
 document.getElementById('geo-move').onchange=e=>{geoMove=e.target.checked;svg.style.cursor=geoMove?'move':'default';document.getElementById('geo-status').textContent=geoMove?'Przeciągnij puste miejsce na obszarze roboczym, aby przesunąć podkład.':'Tryb edycji klocków.';};
 function draw(){
-const c=drag?.frame?.center||centroid(),a=angle*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);
+const c=viewCenter||centroid(),a=angle*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);
 const points=blocks.flatMap(b=>[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]].map(([x,y])=>{x-=c.x;y-=c.y;return [x*cs-y*sn,x*sn+y*cs];}));
 const overlayPoints=geoVisible?geoBounds().map(p=>[p.x*cs-p.y*sn,p.x*sn+p.y*cs]):[];
 const extent=Math.max(40,...points.concat(overlayPoints).flatMap(p=>[Math.abs(p[0])*1.15,Math.abs(p[1])*1.15]));
-scale=drag?.frame?.scale||Math.min(5,275/extent);
+scale=viewScale??Math.min(5,275/extent);if(viewScale===null)viewScale=scale;
 let parts=[];
 for(let x=20;x<900;x+=25)parts.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="420" stroke="#e1e9f4"/>');
 for(let y=10;y<620;y+=25)parts.push('<line x1="0" y1="'+y+'" x2="620" y2="'+y+'" stroke="#e1e9f4"/>');
@@ -162,7 +162,7 @@ draw();}
 function point(e,frame){const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)*900/r.width,sy=(e.clientY-r.top)*620/r.height,c=frame?.center||centroid(),zoom=frame?.scale||scale,x=(sx-450)/zoom,y=-(sy-310)/zoom,a=-(frame?.angle??angle)*Math.PI/180;return {x:x*Math.cos(a)-y*Math.sin(a)+c.x,y:x*Math.sin(a)+y*Math.cos(a)+c.y};}
 svg.addEventListener('dragstart',e=>e.preventDefault());
 svg.addEventListener('selectstart',e=>e.preventDefault());
-svg.addEventListener('pointerdown',e=>{e.preventDefault();const id=Number(e.target.getAttribute('data-id'));if(geoMove&&geoRings.length&&!id){const frame={center:centroid(),scale,angle};drag={mode:'geo',frame,start:point(e,frame),offset:{...geoOffset}};svg.setPointerCapture(e.pointerId);return;}if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const frame={center:centroid(),scale,angle};const p=point(e,frame),edge=e.target.getAttribute('data-resize');
+svg.addEventListener('pointerdown',e=>{e.preventDefault();const id=Number(e.target.getAttribute('data-id'));if(geoMove&&geoRings.length&&!id){const frame={center:viewCenter||centroid(),scale,angle};drag={mode:'geo',frame,start:point(e,frame),offset:{...geoOffset}};svg.setPointerCapture(e.pointerId);return;}if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const frame={center:viewCenter||centroid(),scale,angle};const p=point(e,frame),edge=e.target.getAttribute('data-resize');
 drag={id,frame,start:p,original:{...b},startBlocks:blocks.map(v=>({...v})),mode:edge?'resize':'move',edge,dx:p.x-b.x,dy:p.y-b.y};
 svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');notice('');render();});
 svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e,drag.frame);if(drag.mode==='geo'){geoOffset={x:drag.offset.x+p.x-drag.start.x,y:drag.offset.y+p.y-drag.start.y};draw();return;}const b=blocks.find(v=>v.id===drag.id),others=blocks.filter(v=>v.id!==b.id);
@@ -202,7 +202,7 @@ function decodePattern(){
 const raw=decodeURIComponent(location.hash.slice(3)),parts=raw.split(';');
 if(parts.shift()!=='1'||parts.length<1||parts.length>100)throw Error('Nieprawidłowy format');
 const items=parts.map((p,i)=>{const a=p.split(',').map(Number);if(a.length!==5||a.some(n=>!Number.isFinite(n)||Math.abs(n)>100000))throw Error('Nieprawidłowe dane');const [x,y,vx,vy,width]=a;if(width<4||(Math.abs(vx)>1e-7)===(Math.abs(vy)>1e-7))throw Error('Nieprawidłowy wektor');const w=vx?Math.abs(vx):width,h=vy?Math.abs(vy):width;return {id:i+1,x:x-w/2,y:y-h/2,w,h};});
-if(!valid(items))throw Error('Układ nie jest spójny');blocks=items;nextId=items.length+1;selected=items[0].id;shape='custom';angle=0;render();notice('Wczytano układ z linku.');
+if(!valid(items))throw Error('Układ nie jest spójny');blocks=items;nextId=items.length+1;selected=items[0].id;shape='custom';angle=0;viewCenter=centroid();viewScale=null;render();notice('Wczytano układ z linku.');
 }
 function readPattern(){if(location.hash.startsWith('#p='))try{decodePattern();}catch(e){notice('Błąd linku: '+e.message);}}
 document.getElementById('share').onclick=async()=>{const u=new URL(location.href);u.hash='p='+encodeURIComponent(encodePattern());history.replaceState(null,'',u.href);try{if(navigator.share)await navigator.share({title:'Tup Pattern Lab',url:u.href});else await navigator.clipboard.writeText(u.href);notice('Link gotowy do udostępnienia.');}catch(e){if(e.name!=='AbortError')prompt('Skopiuj link:',u.href);}};
