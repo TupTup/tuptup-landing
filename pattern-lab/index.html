@@ -8,7 +8,7 @@
 </style></head><body><div class="wrap">
 <header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi. Obrót na podglądzie nie zmienia lokalnego deskryptora zespolonego.</p></div><a href="../">TupTup ↗</a></header>
 <div class="layout"><section class="card"><h2>Edytor klocków</h2>
-<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby go przesuwać, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane, aby zachować połączenia bez nakładania.</p>
+<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby płynnie przesuwać go i przyciągać do krawędzi, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane, aby zachować połączenia bez nakładania.</p>
 <div class="tabs" id="tabs"></div>
 <svg id="scene" viewBox="0 0 900 620" role="img" aria-label="Edytor rzutu budynku: przeciągaj klocki"></svg>
 <div class="toolrow"><button class="primary" id="add">+ Dodaj klocek</button><button id="remove">Usuń zaznaczony</button><button id="reset">Reset szablonu</button></div>
@@ -52,12 +52,19 @@ return seen.size===items.length;}
 function centroid(){let area=0,x=0,y=0;for(const b of blocks){const a=b.w*b.h;area+=a;x+=(b.x+b.w/2)*a;y+=(b.y+b.h/2)*a;}return {x:x/area,y:y/area};}
 function model(){const c=centroid();return blocks.map(b=>{const horizontal=b.w>=b.h;return {id:b.id,z:{re:b.x+b.w/2-c.x,im:b.y+b.h/2-c.y},v:{re:horizontal?b.w:0,im:horizontal?0:b.h},width:horizontal?b.h:b.w,rectangle:{x:b.x,y:b.y,w:b.w,h:b.h}};});}
 function candidates(moving,others,tx,ty){
-const out=[];const push=(x,y)=>{const item={...moving,x,y};if(valid([...others,item]))out.push({x,y,score:(x-tx)**2+(y-ty)**2});};
+const out=[],seen=new Set();
+function push(x,y){const key=x.toFixed(5)+','+y.toFixed(5);if(seen.has(key))return;seen.add(key);const item={...moving,x,y};if(valid([...others,item]))out.push({x,y,score:(x-tx)**2+(y-ty)**2});}
 for(const b of others){
-const minY=b.y-moving.h+0.5,maxY=b.y+b.h-0.5;
-const minX=b.x-moving.w+0.5,maxX=b.x+b.w-0.5;
-if(minY<=maxY){push(b.x-moving.w,Math.max(minY,Math.min(maxY,ty)));push(b.x+b.w,Math.max(minY,Math.min(maxY,ty)));}
-if(minX<=maxX){push(Math.max(minX,Math.min(maxX,tx)),b.y-moving.h);push(Math.max(minX,Math.min(maxX,tx)),b.y+b.h);}
+const minY=b.y-moving.h+0.01,maxY=b.y+b.h-0.01;
+const minX=b.x-moving.w+0.01,maxX=b.x+b.w-0.01;
+if(minY<=maxY)for(const x of [b.x-moving.w,b.x+b.w]){
+push(x,Math.max(minY,Math.min(maxY,ty)));
+for(const y of [b.y,b.y+b.h-moving.h,minY,maxY])if(y>=minY&&y<=maxY)push(x,y);
+}
+if(minX<=maxX)for(const y of [b.y-moving.h,b.y+b.h]){
+push(Math.max(minX,Math.min(maxX,tx)),y);
+for(const x of [b.x,b.x+b.w-moving.w,minX,maxX])if(x>=minX&&x<=maxX)push(x,y);
+}
 }
 out.sort((a,b)=>a.score-b.score);return out;
 }
@@ -110,11 +117,11 @@ document.getElementById('geo-load').onclick=()=>{try{const rings=parseGeoJSON(do
 document.getElementById('geo-clear').onclick=()=>{geoRings=[];document.getElementById('geo-input').value='';document.getElementById('geo-status').textContent='Brak podkładu.';draw();};
 document.getElementById('geo-visible').onchange=e=>{geoVisible=e.target.checked;draw();};
 function draw(){
-const c=centroid(),a=angle*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);
+const c=drag?.frame?.center||centroid(),a=angle*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);
 const points=blocks.flatMap(b=>[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]].map(([x,y])=>{x-=c.x;y-=c.y;return [x*cs-y*sn,x*sn+y*cs];}));
 const overlayPoints=geoVisible?geoBounds().map(p=>[p.x*cs-p.y*sn,p.x*sn+p.y*cs]):[];
 const extent=Math.max(40,...points.concat(overlayPoints).flatMap(p=>[Math.abs(p[0])*1.15,Math.abs(p[1])*1.15]));
-scale=Math.min(5,275/extent);
+scale=drag?.frame?.scale||Math.min(5,275/extent);
 let parts=[];
 for(let x=20;x<900;x+=25)parts.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="420" stroke="#e1e9f4"/>');
 for(let y=10;y<620;y+=25)parts.push('<line x1="0" y1="'+y+'" x2="620" y2="'+y+'" stroke="#e1e9f4"/>');
@@ -171,10 +178,12 @@ if(updated){blocks=updated;notice('');render();}else notice('Nie można zmienić
 return;
 }
 if(!others.length)return;
-const opts=candidates(b,others,p.x-drag.dx,p.y-drag.dy);
-if(opts.length){b.x=opts[0].x;b.y=opts[0].y;render();}else notice('Nie można przesunąć: klocki muszą pozostać połączone i nie mogą nachodzić na siebie.');
+const tx=p.x-drag.dx,ty=p.y-drag.dy;
+const opts=candidates(b,others,tx,ty);
+if(opts.length){const best=opts[0];b.x=best.x;b.y=best.y;notice('');render();}
+else notice('Brak położenia zachowującego spójność klocków.');
 });
-function endDrag(){drag=null;svg.classList.remove('dragging');}
+function endDrag(){if(!drag)return;drag=null;svg.classList.remove('dragging');render();}
 svg.addEventListener('pointerup',endDrag);svg.addEventListener('pointercancel',endDrag);svg.addEventListener('lostpointercapture',endDrag);
 document.getElementById('add').onclick=()=>{const base=blocks.find(b=>b.id===selected)||blocks[blocks.length-1],newBlock=rect(base.x+base.w,base.y,12,24);const opts=candidates(newBlock,blocks,newBlock.x,newBlock.y);if(!opts.length){nextId--;notice('Nie znaleziono miejsca na nowy klocek.');return;}newBlock.x=opts[0].x;newBlock.y=opts[0].y;blocks.push(newBlock);selected=newBlock.id;notice('Dodano klocek B'+selected);render();};
 document.getElementById('remove').onclick=()=>{if(blocks.length<=1)return;const rest=blocks.filter(b=>b.id!==selected);if(!valid(rest)){notice('Nie można usunąć: pozostałe klocki straciłyby połączenie.');return;}blocks=rest;selected=blocks[0].id;notice('Usunięto klocek.');render();};
