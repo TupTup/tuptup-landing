@@ -66,8 +66,8 @@ for(let x=20;x<900;x+=25)parts.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="420"
 for(let y=10;y<620;y+=25)parts.push('<line x1="0" y1="'+y+'" x2="620" y2="'+y+'" stroke="#e1e9f4"/>');
 parts.push('<line x1="450" y1="0" x2="450" y2="420" stroke="#aab9ca" stroke-dasharray="5 5"/><line x1="0" y1="310" x2="620" y2="310" stroke="#aab9ca" stroke-dasharray="5 5"/>');
 parts.push('<g transform="translate(450 310) scale('+scale+' '+(-scale)+') rotate('+angle+') translate('+(-c.x)+' '+(-c.y)+')">');
-blocks.forEach((b,i)=>{const stroke=selected===b.id?'#132c4d':color(i),sw=selected===b.id?1.5:.7;
-parts.push('<rect data-id="'+b.id+'" x="'+b.x+'" y="'+b.y+'" width="'+b.w+'" height="'+b.h+'" fill="'+color(i)+'" fill-opacity=".48" stroke="'+stroke+'" stroke-width="'+sw+'"/>');
+blocks.forEach((b,i)=>{const stroke=selected===b.id?'#55718f':color(i),sw=selected===b.id?.85:.35;
+parts.push('<rect data-id="'+b.id+'" x="'+b.x+'" y="'+b.y+'" width="'+b.w+'" height="'+b.h+'" fill="'+color(i)+'" fill-opacity=".48" stroke="'+stroke+'" stroke-opacity=".55" stroke-width="'+sw+'"/>');
 if(axes){const x=b.x+b.w/2,y=b.y+b.h/2;
 parts.push('<line x1="'+(b.w>=b.h?b.x:x)+'" y1="'+(b.w>=b.h?y:b.y)+'" x2="'+(b.w>=b.h?b.x+b.w:x)+'" y2="'+(b.w>=b.h?y:b.y+b.h)+'" stroke="'+stroke+'" stroke-width=".65" stroke-dasharray="2 1.5" pointer-events="none"/>');}
 });
