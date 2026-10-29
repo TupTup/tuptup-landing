@@ -8,7 +8,7 @@
 </style></head><body><div class="wrap">
 <header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi. Obrót na podglądzie nie zmienia lokalnego deskryptora zespolonego.</p></div><a href="../">TupTup ↗</a></header>
 <div class="layout"><section class="card"><h2>Edytor klocków</h2>
-<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby płynnie przesuwać go i przyciągać do krawędzi, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane, aby zachować połączenia bez nakładania.</p>
+<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby płynnie przesuwać go i przyciągać do krawędzi, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane. Możesz włączyć przyciąganie do obrysu GeoJSON i osobno przesuwać podkład.</p>
 <div class="tabs" id="tabs"></div>
 <svg id="scene" viewBox="0 0 900 620" role="img" aria-label="Edytor rzutu budynku: przeciągaj klocki"></svg>
 <div class="toolrow"><button class="primary" id="add">+ Dodaj klocek</button><button id="remove">Usuń zaznaczony</button><button id="reset">Reset szablonu</button></div>
@@ -17,6 +17,8 @@
 <textarea id="geo-input" spellcheck="false" placeholder='Wklej tutaj GeoJSON…'></textarea>
 <div class="toolrow"><button id="geo-load">Wczytaj podkład</button><button id="geo-clear">Usuń podkład</button></div>
 <label class="check"><input type="checkbox" id="geo-visible" checked> Pokaż podkład</label>
+<label class="check"><input type="checkbox" id="geo-snap" checked> Przyciągaj klocki do GeoJSON (1 m)</label>
+<label class="check"><input type="checkbox" id="geo-move"> Przesuwaj podkład myszą (tryb podkładu)</label>
 <div class="geo-hint" id="geo-status" aria-live="polite">Brak podkładu.</div>
 </details><div class="selection" id="selection"></div><div class="status" id="status" aria-live="polite"></div>
 <div class="sliderline"><label for="angle">Obrót podglądu</label><output id="angleValue">0°</output></div>
@@ -34,7 +36,7 @@ H:[[-30,-24,12,48],[18,-24,12,48],[-18,-6,36,12]],
 T:[[-6,-24,12,36],[-30,12,60,12]]
 };
 const colors=['#4f8bc9','#2ea38d','#d59b45','#9565bc','#d67c83','#47a5b6','#8b9c4a'];
-let blocks=[],selected=null,nextId=1,shape='U',angle=0,axes=true,drag=null,scale=3,geoRings=[],geoVisible=true;
+let blocks=[],selected=null,nextId=1,shape='U',angle=0,axes=true,drag=null,scale=3,geoRings=[],geoVisible=true,geoSnap=true,geoMove=false,geoOffset={x:0,y:0};
 const svg=document.getElementById('scene');
 const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1);
 const complex=(x,y)=>fmt(x)+(y<-.05?' − ':' + ')+fmt(Math.abs(y))+'i';
@@ -112,10 +114,40 @@ const result=rings.map(r=>r.map(p=>({x:(p[0]-cx)*fx,y:(p[1]-cy)*fy})));
 if(result.some(r=>r.length<3))throw Error('Poligon wymaga co najmniej trzech punktów.');
 return result;
 }
-function geoBounds(){return geoRings.flat();}
-document.getElementById('geo-load').onclick=()=>{try{const rings=parseGeoJSON(document.getElementById('geo-input').value);geoRings=rings;geoVisible=true;document.getElementById('geo-visible').checked=true;document.getElementById('geo-status').textContent='Wczytano '+rings.length+' pierścieni. Podkład wycentrowany względem centroidu budynku.';draw();}catch(e){document.getElementById('geo-status').textContent='Błąd: '+e.message;}};
-document.getElementById('geo-clear').onclick=()=>{geoRings=[];document.getElementById('geo-input').value='';document.getElementById('geo-status').textContent='Brak podkładu.';draw();};
+function geoBounds(){return geoRings.flat().map(p=>({x:p.x+geoOffset.x,y:p.y+geoOffset.y}));}
+function geoSnapRect(candidate,others,edge){
+if(!geoSnap||!geoVisible||!geoRings.length)return candidate;
+const tol=1,segments=[];
+for(const ring of geoRings)for(let i=0;i<ring.length;i++){
+const a=ring[i],b=ring[(i+1)%ring.length];
+segments.push([{x:a.x+geoOffset.x,y:a.y+geoOffset.y},{x:b.x+geoOffset.x,y:b.y+geoOffset.y}]);
+}
+const results=[{...candidate}];
+for(const [a,b] of segments){
+if(Math.abs(a.x-b.x)<0.15){
+const x=(a.x+b.x)/2,min=Math.min(a.y,b.y),max=Math.max(a.y,b.y);
+if(Math.min(candidate.y+candidate.h,max)-Math.max(candidate.y,min)<=0)continue;
+for(const side of ['w','e']){if(edge&&edge!==side)continue;const current=side==='w'?candidate.x:candidate.x+candidate.w,d=x-current;if(Math.abs(d)>tol)continue;
+const next={...candidate};if(edge==='w'){next.x+=d;next.w-=d;}else if(edge==='e')next.w+=d;else next.x+=d;
+if(next.w>=4&&valid([...others,next]))results.push(next);
+}
+}
+if(Math.abs(a.y-b.y)<0.15){
+const y=(a.y+b.y)/2,min=Math.min(a.x,b.x),max=Math.max(a.x,b.x);
+if(Math.min(candidate.x+candidate.w,max)-Math.max(candidate.x,min)<=0)continue;
+for(const side of ['s','n']){if(edge&&edge!==side)continue;const current=side==='s'?candidate.y:candidate.y+candidate.h,d=y-current;if(Math.abs(d)>tol)continue;
+const next={...candidate};if(edge==='s'){next.y+=d;next.h-=d;}else if(edge==='n')next.h+=d;else next.y+=d;
+if(next.h>=4&&valid([...others,next]))results.push(next);
+}
+}
+}
+return results.length>1?results.slice(1).sort((a,b)=>Math.abs(a.x-candidate.x)+Math.abs(a.y-candidate.y)+Math.abs(a.w-candidate.w)+Math.abs(a.h-candidate.h)-Math.abs(b.x-candidate.x)-Math.abs(b.y-candidate.y)-Math.abs(b.w-candidate.w)-Math.abs(b.h-candidate.h))[0]:candidate;
+}
+document.getElementById('geo-load').onclick=()=>{try{const rings=parseGeoJSON(document.getElementById('geo-input').value);geoRings=rings;geoOffset={x:0,y:0};geoVisible=true;document.getElementById('geo-visible').checked=true;document.getElementById('geo-status').textContent='Wczytano '+rings.length+' pierścieni. Podkład wycentrowany względem centroidu budynku.';draw();}catch(e){document.getElementById('geo-status').textContent='Błąd: '+e.message;}};
+document.getElementById('geo-clear').onclick=()=>{geoRings=[];geoOffset={x:0,y:0};document.getElementById('geo-input').value='';document.getElementById('geo-status').textContent='Brak podkładu.';draw();};
 document.getElementById('geo-visible').onchange=e=>{geoVisible=e.target.checked;draw();};
+document.getElementById('geo-snap').onchange=e=>{geoSnap=e.target.checked;};
+document.getElementById('geo-move').onchange=e=>{geoMove=e.target.checked;svg.style.cursor=geoMove?'move':'default';document.getElementById('geo-status').textContent=geoMove?'Przeciągnij puste miejsce na obszarze roboczym, aby przesunąć podkład.':'Tryb edycji klocków.';};
 function draw(){
 const c=drag?.frame?.center||centroid(),a=angle*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);
 const points=blocks.flatMap(b=>[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]].map(([x,y])=>{x-=c.x;y-=c.y;return [x*cs-y*sn,x*sn+y*cs];}));
@@ -128,7 +160,7 @@ for(let y=10;y<620;y+=25)parts.push('<line x1="0" y1="'+y+'" x2="620" y2="'+y+'"
 parts.push('<line x1="450" y1="0" x2="450" y2="420" stroke="#aab9ca" stroke-dasharray="5 5"/><line x1="0" y1="310" x2="620" y2="310" stroke="#aab9ca" stroke-dasharray="5 5"/>');
 parts.push('<g transform="translate(450 310) scale('+scale+' '+(-scale)+') rotate('+angle+') translate('+(-c.x)+' '+(-c.y)+')">');
 if(geoVisible&&geoRings.length){
-const paths=geoRings.map(r=>r.map((p,i)=>(i?'L':'M')+(p.x+c.x)+' '+(p.y+c.y)).join(' ')+' Z').join(' ');
+const paths=geoRings.map(r=>r.map((p,i)=>(i?'L':'M')+(p.x+geoOffset.x+c.x)+' '+(p.y+geoOffset.y+c.y)).join(' ')+' Z').join(' ');
 parts.push('<path d="'+paths+'" fill="#9ca3af" fill-opacity=".13" fill-rule="evenodd" stroke="#8b929c" stroke-opacity=".5" stroke-width=".65" pointer-events="none"/>');
 }
 blocks.forEach((b,i)=>{const stroke=selected===b.id?'#55718f':color(i),sw=selected===b.id?.85:.35;
@@ -158,10 +190,10 @@ draw();}
 function point(e,frame){const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)*900/r.width,sy=(e.clientY-r.top)*620/r.height,c=frame?.center||centroid(),zoom=frame?.scale||scale,x=(sx-450)/zoom,y=-(sy-310)/zoom,a=-(frame?.angle??angle)*Math.PI/180;return {x:x*Math.cos(a)-y*Math.sin(a)+c.x,y:x*Math.sin(a)+y*Math.cos(a)+c.y};}
 svg.addEventListener('dragstart',e=>e.preventDefault());
 svg.addEventListener('selectstart',e=>e.preventDefault());
-svg.addEventListener('pointerdown',e=>{e.preventDefault();const id=Number(e.target.getAttribute('data-id'));if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const frame={center:centroid(),scale,angle};const p=point(e,frame),edge=e.target.getAttribute('data-resize');
+svg.addEventListener('pointerdown',e=>{e.preventDefault();const id=Number(e.target.getAttribute('data-id'));if(geoMove&&geoRings.length&&!id){const frame={center:centroid(),scale,angle};drag={mode:'geo',frame,start:point(e,frame),offset:{...geoOffset}};svg.setPointerCapture(e.pointerId);return;}if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const frame={center:centroid(),scale,angle};const p=point(e,frame),edge=e.target.getAttribute('data-resize');
 drag={id,frame,start:p,original:{...b},startBlocks:blocks.map(v=>({...v})),mode:edge?'resize':'move',edge,dx:p.x-b.x,dy:p.y-b.y};
 svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');notice('');render();});
-svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e,drag.frame),b=blocks.find(v=>v.id===drag.id),others=blocks.filter(v=>v.id!==b.id);
+svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e,drag.frame);if(drag.mode==='geo'){geoOffset={x:drag.offset.x+p.x-drag.start.x,y:drag.offset.y+p.y-drag.start.y};draw();return;}const b=blocks.find(v=>v.id===drag.id),others=blocks.filter(v=>v.id!==b.id);
 if(drag.mode==='resize'){
 const original=drag.original,deltaX=p.x-drag.start.x,deltaY=p.y-drag.start.y,min=4,step=0.5;
 const snap=n=>Math.round(n/step)*step;
@@ -173,14 +205,14 @@ case 'n':candidate.h=Math.max(min,snap(original.h+deltaY));break;
 case 's':candidate.h=Math.max(min,snap(original.h-deltaY));candidate.y=original.y+original.h-candidate.h;break;
 }
 const direct=drag.startBlocks.map(v=>v.id===b.id?candidate:{...v});
-const updated=valid(direct)?direct:resizeWithPush(drag.startBlocks,b.id,drag.edge,candidate);
+let updated=valid(direct)?direct:resizeWithPush(drag.startBlocks,b.id,drag.edge,candidate);if(updated){const current=updated.find(v=>v.id===b.id),snapped=geoSnapRect(current,updated.filter(v=>v.id!==b.id),drag.edge);if(snapped!==current){const adjusted=updated.map(v=>v.id===b.id?snapped:v);if(valid(adjusted))updated=adjusted;}}
 if(updated){blocks=updated;notice('');render();}else notice('Nie można zmienić wymiaru bez rozłączenia lub nałożenia klocków.');
 return;
 }
 if(!others.length)return;
 const tx=p.x-drag.dx,ty=p.y-drag.dy;
 const opts=candidates(b,others,tx,ty);
-if(opts.length){const best=opts[0];b.x=best.x;b.y=best.y;notice('');render();}
+if(opts.length){const best=opts[0],snapped=geoSnapRect({...b,x:best.x,y:best.y},others,null);b.x=snapped.x;b.y=snapped.y;notice('');render();}
 else notice('Brak położenia zachowującego spójność klocków.');
 });
 function endDrag(){if(!drag)return;drag=null;svg.classList.remove('dragging');render();}
