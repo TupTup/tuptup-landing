@@ -7,7 +7,7 @@
 </style></head><body><div class="wrap">
 <header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi. Obrót na podglądzie nie zmienia lokalnego deskryptora zespolonego.</p></div><a href="../">TupTup ↗</a></header>
 <div class="layout"><section class="card"><h2>Edytor klocków</h2>
-<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby go przesuwać, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Klocki pozostają połączone bez nakładania.</p>
+<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby go przesuwać, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane, aby zachować połączenia bez nakładania.</p>
 <div class="tabs" id="tabs"></div>
 <svg id="scene" viewBox="0 0 900 620" role="img" aria-label="Edytor rzutu budynku: przeciągaj klocki"></svg>
 <div class="toolrow"><button class="primary" id="add">+ Dodaj klocek</button><button id="remove">Usuń zaznaczony</button><button id="reset">Reset szablonu</button></div>
@@ -54,6 +54,25 @@ if(minX<=maxX){push(Math.max(minX,Math.min(maxX,tx)),b.y-moving.h);push(Math.max
 }
 out.sort((a,b)=>a.score-b.score);return out;
 }
+function resizeWithPush(originals,id,edge,candidate){
+const initial=originals.find(b=>b.id===id),dx=edge==='e'?candidate.w-initial.w:edge==='w'?candidate.x-initial.x:0,dy=edge==='n'?candidate.h-initial.h:edge==='s'?candidate.y-initial.y:0;
+const delta=edge==='e'?dx:edge==='w'?dx:edge==='n'?dy:dy;
+const axis=(edge==='e'||edge==='w')?'x':'y';
+const movingFace=edge==='e'?initial.x+initial.w:edge==='w'?initial.x:edge==='n'?initial.y+initial.h:initial.y;
+const side=edge==='e'||edge==='n'?1:-1;
+const others=originals.filter(b=>b.id!==id);
+const moved=new Set();
+const queue=[];
+const faceTouch=b=>{
+const span=axis==='x'?Math.min(initial.y+initial.h,b.y+b.h)-Math.max(initial.y,b.y):Math.min(initial.x+initial.w,b.x+b.w)-Math.max(initial.x,b.x);
+const near=axis==='x'?(side>0?b.x:b.x+b.w):(side>0?b.y:b.y+b.h);
+return span>eps&&Math.abs(near-movingFace)<eps;
+};
+for(const b of others)if(faceTouch(b)){moved.add(b.id);queue.push(b);}
+while(queue.length){const current=queue.shift();for(const b of others){if(moved.has(b.id))continue;if(adjacent(current,b)){moved.add(b.id);queue.push(b);}}}
+const result=originals.map(b=>b.id===id?{...candidate}:{...b,[axis]:b[axis]+(moved.has(b.id)?delta:0)});
+return valid(result)?result:null;
+}
 function notice(t){document.getElementById('status').textContent=t;}
 function color(i){return colors[i%colors.length];}
 function draw(){
@@ -94,7 +113,7 @@ function point(e,frame){const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left
 svg.addEventListener('dragstart',e=>e.preventDefault());
 svg.addEventListener('selectstart',e=>e.preventDefault());
 svg.addEventListener('pointerdown',e=>{e.preventDefault();const id=Number(e.target.getAttribute('data-id'));if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const frame={center:centroid(),scale,angle};const p=point(e,frame),edge=e.target.getAttribute('data-resize');
-drag={id,frame,start:p,original:{...b},mode:edge?'resize':'move',edge,dx:p.x-b.x,dy:p.y-b.y};
+drag={id,frame,start:p,original:{...b},startBlocks:blocks.map(v=>({...v})),mode:edge?'resize':'move',edge,dx:p.x-b.x,dy:p.y-b.y};
 svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');notice('');render();});
 svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e,drag.frame),b=blocks.find(v=>v.id===drag.id),others=blocks.filter(v=>v.id!==b.id);
 if(drag.mode==='resize'){
@@ -107,8 +126,9 @@ case 'w':candidate.w=Math.max(min,snap(original.w-deltaX));candidate.x=original.
 case 'n':candidate.h=Math.max(min,snap(original.h+deltaY));break;
 case 's':candidate.h=Math.max(min,snap(original.h-deltaY));candidate.y=original.y+original.h-candidate.h;break;
 }
-const updated=blocks.map(v=>v.id===b.id?candidate:v);
-if(valid(updated)){Object.assign(b,candidate);notice('');render();}else notice('Zmiana wymiaru zablokowana: klocki muszą pozostać połączone i nie mogą się nakładać.');
+const direct=drag.startBlocks.map(v=>v.id===b.id?candidate:{...v});
+const updated=valid(direct)?direct:resizeWithPush(drag.startBlocks,b.id,drag.edge,candidate);
+if(updated){blocks=updated;notice('');render();}else notice('Nie można zmienić wymiaru bez rozłączenia lub nałożenia klocków.');
 return;
 }
 if(!others.length)return;
