@@ -127,9 +127,15 @@ const overlayPoints=geoVisible?geoBounds().map(p=>[p.x*cs-p.y*sn,p.x*sn+p.y*cs])
 const extent=Math.max(40,...points.concat(overlayPoints).flatMap(p=>[Math.abs(p[0])*1.15,Math.abs(p[1])*1.15]));
 scale=viewScale??Math.min(5,275/extent);if(viewScale===null)viewScale=scale;
 let parts=[];
-for(let x=20;x<900;x+=25)parts.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="420" stroke="#e1e9f4"/>');
-for(let y=10;y<620;y+=25)parts.push('<line x1="0" y1="'+y+'" x2="620" y2="'+y+'" stroke="#e1e9f4"/>');
-parts.push('<line x1="450" y1="0" x2="450" y2="420" stroke="#aab9ca" stroke-dasharray="5 5"/><line x1="0" y1="310" x2="620" y2="310" stroke="#aab9ca" stroke-dasharray="5 5"/>');
+parts.push('<rect width="900" height="620" fill="#fffefb"/>');
+for(let x=0;x<=900;x+=20)parts.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="620" stroke="'+(x%100===0?'#d6e4f2':'#eaf1f8')+'" stroke-width="'+(x%100===0?1:.65)+'"/>');
+for(let y=0;y<=620;y+=20)parts.push('<line x1="0" y1="'+y+'" x2="900" y2="'+y+'" stroke="'+(y%100===0?'#d6e4f2':'#eaf1f8')+'" stroke-width="'+(y%100===0?1:.65)+'"/>');
+parts.push('<line x1="0" y1="310" x2="900" y2="310" stroke="#547da6" stroke-width="1.8"/>');
+parts.push('<line x1="450" y1="0" x2="450" y2="620" stroke="#547da6" stroke-width="1.8"/>');
+parts.push('<path d="M891 305 L900 310 L891 315 M445 9 L450 0 L455 9" fill="none" stroke="#547da6" stroke-width="1.8"/>');
+parts.push('<text x="871" y="298" font-size="16" font-weight="700" fill="#315e8a">Re</text>');
+parts.push('<text x="461" y="20" font-size="16" font-weight="700" fill="#315e8a">Im</text>');
+parts.push('<circle cx="450" cy="310" r="3.5" fill="#315e8a"/>');
 parts.push('<g transform="translate(450 310) scale('+scale+' '+(-scale)+') rotate('+angle+') translate('+(-c.x)+' '+(-c.y)+')">');
 if(geoVisible&&geoRings.length){
 const paths=geoRings.map(r=>r.map((p,i)=>(i?'L':'M')+(p.x+geoOffset.x+c.x)+' '+(p.y+geoOffset.y+c.y)).join(' ')+' Z').join(' ');
