@@ -8,7 +8,7 @@
 </style></head><body><div class="wrap">
 <header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi. Obrót na podglądzie nie zmienia lokalnego deskryptora zespolonego.</p></div><a href="../">TupTup ↗</a></header>
 <div class="layout"><section class="card"><h2>Edytor klocków</h2>
-<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby płynnie przesuwać go i przyciągać do krawędzi, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane. Możesz włączyć przyciąganie do obrysu GeoJSON i osobno przesuwać podkład.</p>
+<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby płynnie przesuwać go i przyciągać do krawędzi, albo dowolne miejsce na krawędzi zaznaczonego klocka, aby zmieniać długość i szerokość. Przy powiększaniu przyległe klocki są rozsuwane. Możesz osobno przesuwać podkład GeoJSON.</p>
 <div class="tabs" id="tabs"></div>
 <svg id="scene" viewBox="0 0 900 620" role="img" aria-label="Edytor rzutu budynku: przeciągaj klocki"></svg>
 <div class="toolrow"><button class="primary" id="add">+ Dodaj klocek</button><button id="remove">Usuń zaznaczony</button><button id="reset">Reset szablonu</button></div>
@@ -17,7 +17,7 @@
 <textarea id="geo-input" spellcheck="false" placeholder='Wklej tutaj GeoJSON…'></textarea>
 <div class="toolrow"><button id="geo-load">Wczytaj podkład</button><button id="geo-clear">Usuń podkład</button></div>
 <label class="check"><input type="checkbox" id="geo-visible" checked> Pokaż podkład</label>
-<label class="check"><input type="checkbox" id="geo-snap" checked> Przyciągaj klocki do GeoJSON (1 m)</label>
+
 <label class="check"><input type="checkbox" id="geo-move"> Przesuwaj podkład myszą (tryb podkładu)</label>
 <div class="geo-hint" id="geo-status" aria-live="polite">Brak podkładu.</div>
 </details><div class="selection" id="selection"></div><div class="status" id="status" aria-live="polite"></div>
@@ -36,7 +36,7 @@ H:[[-30,-24,12,48],[18,-24,12,48],[-18,-6,36,12]],
 T:[[-6,-24,12,36],[-30,12,60,12]]
 };
 const colors=['#4f8bc9','#2ea38d','#d59b45','#9565bc','#d67c83','#47a5b6','#8b9c4a'];
-let blocks=[],selected=null,nextId=1,shape='U',angle=0,axes=true,drag=null,scale=3,geoRings=[],geoVisible=true,geoSnap=true,geoMove=false,geoOffset={x:0,y:0};
+let blocks=[],selected=null,nextId=1,shape='U',angle=0,axes=true,drag=null,scale=3,geoRings=[],geoVisible=true,geoMove=false,geoOffset={x:0,y:0};
 const svg=document.getElementById('scene');
 const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1);
 const complex=(x,y)=>fmt(x)+(y<-.05?' − ':' + ')+fmt(Math.abs(y))+'i';
@@ -115,38 +115,10 @@ if(result.some(r=>r.length<3))throw Error('Poligon wymaga co najmniej trzech pun
 return result;
 }
 function geoBounds(){return geoRings.flat().map(p=>({x:p.x+geoOffset.x,y:p.y+geoOffset.y}));}
-function geoSnapRect(candidate,others,edge){
-if(!geoSnap||!geoVisible||!geoRings.length)return candidate;
-const tol=1,segments=[];
-for(const ring of geoRings)for(let i=0;i<ring.length;i++){
-const a=ring[i],b=ring[(i+1)%ring.length];
-segments.push([{x:a.x+geoOffset.x,y:a.y+geoOffset.y},{x:b.x+geoOffset.x,y:b.y+geoOffset.y}]);
-}
-const results=[{...candidate}];
-for(const [a,b] of segments){
-if(Math.abs(a.x-b.x)<0.15){
-const x=(a.x+b.x)/2,min=Math.min(a.y,b.y),max=Math.max(a.y,b.y);
-if(Math.min(candidate.y+candidate.h,max)-Math.max(candidate.y,min)<=0)continue;
-for(const side of ['w','e']){if(edge&&edge!==side)continue;const current=side==='w'?candidate.x:candidate.x+candidate.w,d=x-current;if(Math.abs(d)>tol)continue;
-const next={...candidate};if(edge==='w'){next.x+=d;next.w-=d;}else if(edge==='e')next.w+=d;else next.x+=d;
-if(next.w>=4&&valid([...others,next]))results.push(next);
-}
-}
-if(Math.abs(a.y-b.y)<0.15){
-const y=(a.y+b.y)/2,min=Math.min(a.x,b.x),max=Math.max(a.x,b.x);
-if(Math.min(candidate.x+candidate.w,max)-Math.max(candidate.x,min)<=0)continue;
-for(const side of ['s','n']){if(edge&&edge!==side)continue;const current=side==='s'?candidate.y:candidate.y+candidate.h,d=y-current;if(Math.abs(d)>tol)continue;
-const next={...candidate};if(edge==='s'){next.y+=d;next.h-=d;}else if(edge==='n')next.h+=d;else next.y+=d;
-if(next.h>=4&&valid([...others,next]))results.push(next);
-}
-}
-}
-return results.length>1?results.slice(1).sort((a,b)=>Math.abs(a.x-candidate.x)+Math.abs(a.y-candidate.y)+Math.abs(a.w-candidate.w)+Math.abs(a.h-candidate.h)-Math.abs(b.x-candidate.x)-Math.abs(b.y-candidate.y)-Math.abs(b.w-candidate.w)-Math.abs(b.h-candidate.h))[0]:candidate;
-}
 document.getElementById('geo-load').onclick=()=>{try{const rings=parseGeoJSON(document.getElementById('geo-input').value);geoRings=rings;geoOffset={x:0,y:0};geoVisible=true;document.getElementById('geo-visible').checked=true;document.getElementById('geo-status').textContent='Wczytano '+rings.length+' pierścieni. Podkład wycentrowany względem centroidu budynku.';draw();}catch(e){document.getElementById('geo-status').textContent='Błąd: '+e.message;}};
 document.getElementById('geo-clear').onclick=()=>{geoRings=[];geoOffset={x:0,y:0};document.getElementById('geo-input').value='';document.getElementById('geo-status').textContent='Brak podkładu.';draw();};
 document.getElementById('geo-visible').onchange=e=>{geoVisible=e.target.checked;draw();};
-document.getElementById('geo-snap').onchange=e=>{geoSnap=e.target.checked;};
+
 document.getElementById('geo-move').onchange=e=>{geoMove=e.target.checked;svg.style.cursor=geoMove?'move':'default';document.getElementById('geo-status').textContent=geoMove?'Przeciągnij puste miejsce na obszarze roboczym, aby przesunąć podkład.':'Tryb edycji klocków.';};
 function draw(){
 const c=drag?.frame?.center||centroid(),a=angle*Math.PI/180,cs=Math.cos(a),sn=Math.sin(a);
@@ -205,14 +177,14 @@ case 'n':candidate.h=Math.max(min,snap(original.h+deltaY));break;
 case 's':candidate.h=Math.max(min,snap(original.h-deltaY));candidate.y=original.y+original.h-candidate.h;break;
 }
 const direct=drag.startBlocks.map(v=>v.id===b.id?candidate:{...v});
-let updated=valid(direct)?direct:resizeWithPush(drag.startBlocks,b.id,drag.edge,candidate);if(updated){const current=updated.find(v=>v.id===b.id),snapped=geoSnapRect(current,updated.filter(v=>v.id!==b.id),drag.edge);if(snapped!==current){const adjusted=updated.map(v=>v.id===b.id?snapped:v);if(valid(adjusted))updated=adjusted;}}
+const updated=valid(direct)?direct:resizeWithPush(drag.startBlocks,b.id,drag.edge,candidate);
 if(updated){blocks=updated;notice('');render();}else notice('Nie można zmienić wymiaru bez rozłączenia lub nałożenia klocków.');
 return;
 }
 if(!others.length)return;
 const tx=p.x-drag.dx,ty=p.y-drag.dy;
 const opts=candidates(b,others,tx,ty);
-if(opts.length){const best=opts[0],snapped=geoSnapRect({...b,x:best.x,y:best.y},others,null);b.x=snapped.x;b.y=snapped.y;notice('');render();}
+if(opts.length){const best=opts[0];b.x=best.x;b.y=best.y;notice('');render();}
 else notice('Brak położenia zachowującego spójność klocków.');
 });
 function endDrag(){if(!drag)return;drag=null;svg.classList.remove('dragging');render();}
