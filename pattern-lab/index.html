@@ -10,7 +10,7 @@
 <label class="check"><input id="axes" type="checkbox" checked> Pokaż osie klocków</label>
 <div id="sliders"></div><div class="actions"><button class="btn" id="reset">Przywróć parametry</button></div></section>
 <section class="card"><h2>Deskryptor zespolony</h2><p>Lokalny układ centroidalny: środek z = x + yi, wektor osi v = Δx + Δyi oraz szerokość w. Obrót na mapie nie zmienia tych wartości.</p><div id="values"></div><div class="actions"><button class="btn" id="copy">Kopiuj model</button><button class="btn" id="json">Pobierz JSON</button></div></section></div>
-<p class="foot">To demonstrator geometrii, nie automatyczna dekompozycja footprintu. Przecięcie prostokątów nie potwierdza istnienia przejścia w budynku.</p>
+<p class="foot">To demonstrator geometrii, nie automatyczna dekompozycja footprintu. Klocki stykają się krawędziami, ale ich powierzchnie nie nachodzą na siebie. Sam styk nie potwierdza istnienia przejścia w budynku.</p>
 </div><script>
 const defaults={shape:'U',length:48,width:12,span:36,offset:0,angle:0,axes:true};
 let s={...defaults};
@@ -20,7 +20,14 @@ const fmt=n=>(Math.abs(n)<.05?0:n).toFixed(1);
 const complex=(x,y)=>fmt(x)+(y<-.05?' − ':' + ')+fmt(Math.abs(y))+'i';
 function blocks(){const {length:L,width:W,span:S,offset:O,shape}=s;
 const b=(x,y,dx,dy,w)=>({x,y,dx,dy,w});
-switch(shape){case 'I':return [b(0,0,0,L,W)];case 'L':return [b(-S/2,0,0,L,W),b(0,-L/2,S,0,W)];case 'U':return [b(-S/2,0,0,L,W),b(S/2,0,0,L,W),b(0,-L/2+W/2,S+W,0,W)];case 'H':return [b(-S/2,0,0,L,W),b(S/2,0,0,L,W),b(0,O,S+W,0,W)];case 'T':return [b(0,0,0,L,W),b(O,L/2-W/2,S+W,0,W)];}}
+const gap=Math.max(0,S-W);
+switch(shape){
+case 'I':return [b(0,0,0,L,W)];
+case 'L':return [b(-S/2,0,0,L,W),b(W/4,-L/2+W/2,S-W/2,0,W)];
+case 'U':return [b(-S/2,W/2,0,L-W,W),b(S/2,W/2,0,L-W,W),b(0,-L/2+W/2,gap,0,W)];
+case 'H':return [b(-S/2,0,0,L,W),b(S/2,0,0,L,W),b(0,O,gap,0,W)];
+case 'T':return [b(0,-W/2,0,L-W,W),b(O,L/2-W/2,S+W,0,W)];
+}}
 function centroid(bs){
 const rects=bs.map(b=>{const len=Math.hypot(b.dx,b.dy),phi=Math.atan2(b.dy,b.dx),c=Math.cos(phi),t=Math.sin(phi);const corners=[[-len/2,-b.w/2],[-len/2,b.w/2],[len/2,-b.w/2],[len/2,b.w/2]].map(([x,y])=>({x:b.x+x*c-y*t,y:b.y+x*t+y*c}));return {corners};});
 const xs=[...new Set(rects.flatMap(r=>r.corners.map(p=>p.x)))].sort((a,b)=>a-b),ys=[...new Set(rects.flatMap(r=>r.corners.map(p=>p.y)))].sort((a,b)=>a-b);
