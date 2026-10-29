@@ -3,11 +3,11 @@
 <title>Tup Pattern Lab — klocki zespolone</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17253c;background:#f5f8fc}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1100px;margin:auto;padding:28px 18px 64px}header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}h1{font-size:clamp(25px,4vw,37px);margin:12px 0 5px}p{color:#526177;line-height:1.5}a{color:#245d9b;text-decoration:none}.tag{font-size:12px;background:#e5edf8;padding:6px 10px;border-radius:100px}.layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:18px;margin-top:22px}.card{background:#fff;border:1px solid #e1e8f1;border-radius:17px;padding:20px;box-shadow:0 4px 20px #1b355b08}.card h2{font-size:17px;margin:0 0 16px}.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:15px}.tabs button{border:1px solid #d5dfed;background:#f7faff;padding:11px 4px;border-radius:10px;font-weight:700;font-size:18px;cursor:pointer;color:#30435f}.tabs button.active{background:#245d9b;color:white;border-color:#245d9b}svg{display:block;width:100%;height:auto;border-radius:12px;background:#f8fbff}.line{display:flex;justify-content:space-between;gap:12px;margin:19px 0 7px;font-size:14px}.line output{font-variant-numeric:tabular-nums;color:#245d9b;font-weight:700}input[type=range]{width:100%;accent-color:#245d9b}label{cursor:pointer}.check{display:flex;align-items:center;gap:8px;margin-top:13px;color:#53647c;font-size:13px}.block{border-top:1px solid #e5ebf2;padding:14px 0}.block:first-child{border-top:0;padding-top:0}.block strong{display:block;margin-bottom:8px}.data{display:grid;grid-template-columns:1fr 1fr;gap:8px}.datum{background:#f3f7fc;border-radius:9px;padding:10px;min-width:0}.datum small{display:block;color:#66748a;margin-bottom:4px}.datum span{font-size:13px;font-weight:650;overflow-wrap:anywhere}.muted{font-size:12px;color:#6c7c91;margin-top:8px}.btn{border:1px solid #ccd8e8;background:#fff;border-radius:9px;padding:10px 14px;cursor:pointer;color:#244a78;font-weight:600}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.foot{font-size:13px;margin-top:18px}@media(max-width:750px){.layout{grid-template-columns:1fr}.wrap{padding-top:16px}.card{padding:16px}}
-.toolrow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.toolrow button{border:1px solid #cbd9e9;background:#f8fbff;border-radius:9px;padding:10px 13px;cursor:pointer;color:#274b72;font-weight:650}.toolrow button.primary{background:#245d9b;color:white;border-color:#245d9b}.toolrow button:disabled{opacity:.4;cursor:not-allowed}#scene{touch-action:none;user-select:none;cursor:default}#scene [data-id]{cursor:grab}#scene.dragging [data-id]{cursor:grabbing}.help{font-size:13px;color:#66748a}.status{font-size:12px;min-height:18px;color:#9c5c16}.value-active{background:#eaf3ff;border-radius:9px;padding-left:9px!important;padding-right:9px!important}.sliderline{display:flex;justify-content:space-between;font-size:14px;margin-top:12px}.selection{font-size:13px;color:#53647c;margin:12px 0}
+.toolrow{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.toolrow button{border:1px solid #cbd9e9;background:#f8fbff;border-radius:9px;padding:10px 13px;cursor:pointer;color:#274b72;font-weight:650}.toolrow button.primary{background:#245d9b;color:white;border-color:#245d9b}.toolrow button:disabled{opacity:.4;cursor:not-allowed}#scene{touch-action:none;user-select:none;cursor:default}#scene [data-id]{cursor:grab}#scene.dragging [data-id]{cursor:grabbing}#scene [data-resize]{cursor:ew-resize}#scene [data-resize="n"],#scene [data-resize="s"]{cursor:ns-resize}#scene [data-resize="e"],#scene [data-resize="w"]{cursor:ew-resize}.help{font-size:13px;color:#66748a}.status{font-size:12px;min-height:18px;color:#9c5c16}.value-active{background:#eaf3ff;border-radius:9px;padding-left:9px!important;padding-right:9px!important}.sliderline{display:flex;justify-content:space-between;font-size:14px;margin-top:12px}.selection{font-size:13px;color:#53647c;margin:12px 0}
 </style></head><body><div class="wrap">
 <header><div><div class="tag">TupTup · eksperyment geometryczny</div><h1>Tup Pattern Lab</h1><p>Pięć kształtów, jeden model — prostokątne ramiona opisane liczbami zespolonymi. Obrót na podglądzie nie zmienia lokalnego deskryptora zespolonego.</p></div><a href="../">TupTup ↗</a></header>
 <div class="layout"><section class="card"><h2>Edytor klocków</h2>
-<p class="help">Wybierz szablon lub przeciągnij dowolny prostokąt. Klocki przesuwają się wzdłuż wspólnych krawędzi i pozostają połączone bez nakładania.</p>
+<p class="help">Wybierz szablon. Przeciągaj wnętrze prostokąta, aby go przesuwać, albo uchwyty na czterech krawędziach, aby zmieniać długość i szerokość. Klocki pozostają połączone bez nakładania.</p>
 <div class="tabs" id="tabs"></div>
 <svg id="scene" viewBox="0 0 620 420" role="img" aria-label="Edytor rzutu budynku: przeciągaj klocki"></svg>
 <div class="toolrow"><button class="primary" id="add">+ Dodaj klocek</button><button id="remove">Usuń zaznaczony</button><button id="reset">Reset szablonu</button></div>
@@ -17,7 +17,7 @@
 <label class="check"><input id="axes" type="checkbox" checked> Pokaż osie klocków</label>
 </section><section class="card"><h2>Deskryptor zespolony</h2><p>Lokalny układ budynku z początkiem w centroidzie. Obrót podglądu nie zmienia wartości z ani v.</p>
 <div id="values"></div><div class="actions"><button class="btn" id="copy">Kopiuj model</button><button class="btn" id="json">Pobierz JSON</button></div></section></div>
-<p class="foot">Prostokąty mogą mieć wspólne krawędzie, ale nie nakładają się powierzchniami. Dodawanie i przesuwanie zachowuje spójność całego układu; usunięcie klocka rozłączającego układ jest blokowane.</p>
+<p class="foot">Prostokąty mogą mieć wspólne krawędzie, ale nie nakładają się powierzchniami. Dodawanie, przesuwanie i zmiana wymiarów zachowują spójność całego układu; usunięcie klocka rozłączającego układ jest blokowane.</p>
 <script>
 const templates={
 I:[[-6,-24,12,48]],
@@ -71,6 +71,9 @@ parts.push('<rect data-id="'+b.id+'" x="'+b.x+'" y="'+b.y+'" width="'+b.w+'" hei
 if(axes){const x=b.x+b.w/2,y=b.y+b.h/2;
 parts.push('<line x1="'+(b.w>=b.h?b.x:x)+'" y1="'+(b.w>=b.h?y:b.y)+'" x2="'+(b.w>=b.h?b.x+b.w:x)+'" y2="'+(b.w>=b.h?y:b.y+b.h)+'" stroke="'+stroke+'" stroke-width=".65" stroke-dasharray="2 1.5" pointer-events="none"/>');}
 });
+const active=blocks.find(b=>b.id===selected);
+if(active){const b=active,handleSize=8/scale,positions=[['w',b.x,b.y+b.h/2],['e',b.x+b.w,b.y+b.h/2],['s',b.x+b.w/2,b.y],['n',b.x+b.w/2,b.y+b.h]];
+for(const [edge,x,y] of positions)parts.push('<rect data-resize="'+edge+'" data-id="'+b.id+'" x="'+(x-handleSize/2)+'" y="'+(y-handleSize/2)+'" width="'+handleSize+'" height="'+handleSize+'" fill="#fff" stroke="#173d6b" stroke-width="'+(1.5/scale)+'"/>');}
 parts.push('</g>');
 blocks.forEach((b,i)=>{const x=b.x+b.w/2-c.x,y=b.y+b.h/2-c.y,rx=x*cs-y*sn,ry=x*sn+y*cs;parts.push('<text x="'+(310+rx*scale+8)+'" y="'+(210-ry*scale-8)+'" font-size="13" font-weight="700" fill="'+color(i)+'" pointer-events="none">B'+b.id+'</text>');});
 parts.push('<circle cx="310" cy="210" r="4.5" fill="#17253c" stroke="white" stroke-width="2" pointer-events="none"/><text x="319" y="226" font-size="11" fill="#17253c">Centroid</text>');
@@ -78,15 +81,34 @@ svg.innerHTML=parts.join('');
 }
 function render(){document.getElementById('tabs').innerHTML=Object.keys(templates).map(k=>'<button type="button" data-shape="'+k+'" class="'+(shape===k?'active':'')+'">'+k+'</button>').join('');
 document.querySelectorAll('[data-shape]').forEach(b=>b.onclick=()=>load(b.dataset.shape));
-document.getElementById('selection').textContent='Klocki: '+blocks.length+' · zaznaczony: B'+selected+' · przeciągnij klocek, aby zmienić jego położenie';
+document.getElementById('selection').textContent='Klocki: '+blocks.length+' · zaznaczony: B'+selected+' · przeciągnij klocek lub uchwyt jego krawędzi';
 document.getElementById('remove').disabled=blocks.length===1;
 document.getElementById('angleValue').textContent=angle+'°';
 document.getElementById('values').innerHTML=model().map((b,i)=>'<div class="block '+(selected===b.id?'value-active':'')+'"><strong style="color:'+color(i)+'">B'+b.id+'</strong><div class="data"><div class="datum"><small>Środek z</small><span>'+complex(b.z.re,b.z.im)+'</span></div><div class="datum"><small>Wektor v</small><span>'+complex(b.v.re,b.v.im)+'</span></div></div><div class="muted">Długość: '+fmt(Math.hypot(b.v.re,b.v.im))+' m · szerokość: '+fmt(b.width)+' m</div></div>').join('');
 draw();}
-function point(e){const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)*620/r.width,sy=(e.clientY-r.top)*420/r.height,c=centroid(),x=(sx-310)/scale,y=-(sy-210)/scale,a=-angle*Math.PI/180;return {x:x*Math.cos(a)-y*Math.sin(a)+c.x,y:x*Math.sin(a)+y*Math.cos(a)+c.y};}
-svg.addEventListener('pointerdown',e=>{const id=Number(e.target.getAttribute('data-id'));if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const p=point(e);drag={id,dx:p.x-b.x,dy:p.y-b.y};svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');notice('');render();});
-svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e),b=blocks.find(v=>v.id===drag.id),others=blocks.filter(v=>v.id!==b.id);if(!others.length)return;
-const opts=candidates(b,others,p.x-drag.dx,p.y-drag.dy);if(opts.length){b.x=opts[0].x;b.y=opts[0].y;render();}else notice('Nie można przesunąć: klocki muszą pozostać połączone i nie mogą nachodzić na siebie.');});
+function point(e,frame){const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)*620/r.width,sy=(e.clientY-r.top)*420/r.height,c=frame?.center||centroid(),zoom=frame?.scale||scale,x=(sx-310)/zoom,y=-(sy-210)/zoom,a=-(frame?.angle??angle)*Math.PI/180;return {x:x*Math.cos(a)-y*Math.sin(a)+c.x,y:x*Math.sin(a)+y*Math.cos(a)+c.y};}
+svg.addEventListener('pointerdown',e=>{const id=Number(e.target.getAttribute('data-id'));if(!id)return;const b=blocks.find(v=>v.id===id);selected=id;const frame={center:centroid(),scale,angle};const p=point(e,frame),edge=e.target.getAttribute('data-resize');
+drag={id,frame,start:p,original:{...b},mode:edge?'resize':'move',edge,dx:p.x-b.x,dy:p.y-b.y};
+svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');notice('');render();});
+svg.addEventListener('pointermove',e=>{if(!drag)return;const p=point(e,drag.frame),b=blocks.find(v=>v.id===drag.id),others=blocks.filter(v=>v.id!==b.id);
+if(drag.mode==='resize'){
+const original=drag.original,deltaX=p.x-drag.start.x,deltaY=p.y-drag.start.y,min=4,step=0.5;
+const snap=n=>Math.round(n/step)*step;
+const candidate={...original};
+switch(drag.edge){
+case 'e':candidate.w=Math.max(min,snap(original.w+deltaX));break;
+case 'w':candidate.w=Math.max(min,snap(original.w-deltaX));candidate.x=original.x+original.w-candidate.w;break;
+case 'n':candidate.h=Math.max(min,snap(original.h+deltaY));break;
+case 's':candidate.h=Math.max(min,snap(original.h-deltaY));candidate.y=original.y+original.h-candidate.h;break;
+}
+const updated=blocks.map(v=>v.id===b.id?candidate:v);
+if(valid(updated)){Object.assign(b,candidate);notice('');render();}else notice('Zmiana wymiaru zablokowana: klocki muszą pozostać połączone i nie mogą się nakładać.');
+return;
+}
+if(!others.length)return;
+const opts=candidates(b,others,p.x-drag.dx,p.y-drag.dy);
+if(opts.length){b.x=opts[0].x;b.y=opts[0].y;render();}else notice('Nie można przesunąć: klocki muszą pozostać połączone i nie mogą nachodzić na siebie.');
+});
 function endDrag(){drag=null;svg.classList.remove('dragging');}
 svg.addEventListener('pointerup',endDrag);svg.addEventListener('pointercancel',endDrag);svg.addEventListener('lostpointercapture',endDrag);
 document.getElementById('add').onclick=()=>{const base=blocks.find(b=>b.id===selected)||blocks[blocks.length-1],newBlock=rect(base.x+base.w,base.y,12,24);const opts=candidates(newBlock,blocks,newBlock.x,newBlock.y);if(!opts.length){nextId--;notice('Nie znaleziono miejsca na nowy klocek.');return;}newBlock.x=opts[0].x;newBlock.y=opts[0].y;blocks.push(newBlock);selected=newBlock.id;notice('Dodano klocek B'+selected);render();};
