@@ -16,7 +16,7 @@
 <input id="angle" type="range" min="-180" max="180" step="1" value="0">
 <label class="check"><input id="axes" type="checkbox" checked> Pokaż osie klocków</label>
 </section><section class="card"><h2>Deskryptor zespolony</h2><p>Lokalny układ budynku z początkiem w centroidzie. Obrót podglądu nie zmienia wartości z ani v.</p>
-<div id="values"></div><div class="actions"><button class="btn" id="copy">Kopiuj model</button><button class="btn" id="json">Pobierz JSON</button></div></section></div>
+<div id="values"></div><div class="actions"><button class="btn" id="copy">Kopiuj model</button><button class="btn" id="json">Pobierz JSON</button><button class="btn" id="share">Share</button></div></section></div>
 <p class="foot">Prostokąty mogą mieć wspólne krawędzie, ale nie nakładają się powierzchniami. Dodawanie, przesuwanie i zmiana wymiarów zachowują spójność całego układu; usunięcie klocka rozłączającego układ jest blokowane.</p>
 <script>
 const templates={
@@ -121,4 +121,15 @@ document.getElementById('axes').onchange=e=>{axes=e.target.checked;draw();};
 document.getElementById('copy').onclick=async()=>{const text=model().map(b=>'B'+b.id+': z='+complex(b.z.re,b.z.im)+', v='+complex(b.v.re,b.v.im)+', w='+b.width).join('\n');try{await navigator.clipboard.writeText(text);notice('Skopiowano model.');}catch{window.prompt('Skopiuj model:',text);}};
 document.getElementById('json').onclick=()=>{const data=JSON.stringify({template:shape,blocks:model()},null,2),url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='tup-pattern.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 load('U');
+function encodePattern(){return '1;'+model().map(b=>[b.z.re,b.z.im,b.v.re,b.v.im,b.width].map(n=>Number(n.toFixed(8))).join(',')).join(';');}
+function decodePattern(){
+const raw=decodeURIComponent(location.hash.slice(3)),parts=raw.split(';');
+if(parts.shift()!=='1'||parts.length<1||parts.length>100)throw Error('Nieprawidłowy format');
+const items=parts.map((p,i)=>{const a=p.split(',').map(Number);if(a.length!==5||a.some(n=>!Number.isFinite(n)||Math.abs(n)>100000))throw Error('Nieprawidłowe dane');const [x,y,vx,vy,width]=a;if(width<4||(Math.abs(vx)>1e-7)===(Math.abs(vy)>1e-7))throw Error('Nieprawidłowy wektor');const w=vx?Math.abs(vx):width,h=vy?Math.abs(vy):width;return {id:i+1,x:x-w/2,y:y-h/2,w,h};});
+if(!valid(items))throw Error('Układ nie jest spójny');blocks=items;nextId=items.length+1;selected=items[0].id;shape='custom';angle=0;render();notice('Wczytano układ z linku.');
+}
+function readPattern(){if(location.hash.startsWith('#p='))try{decodePattern();}catch(e){notice('Błąd linku: '+e.message);}}
+document.getElementById('share').onclick=async()=>{const u=new URL(location.href);u.hash='p='+encodeURIComponent(encodePattern());history.replaceState(null,'',u.href);try{if(navigator.share)await navigator.share({title:'Tup Pattern Lab',url:u.href});else await navigator.clipboard.writeText(u.href);notice('Link gotowy do udostępnienia.');}catch(e){if(e.name!=='AbortError')prompt('Skopiuj link:',u.href);}};
+window.addEventListener('hashchange',readPattern);
+readPattern();
 </script></body></html>
