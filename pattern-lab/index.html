@@ -26,7 +26,7 @@
 <label class="check"><input id="axes" type="checkbox" checked> Pokaż osie klocków</label>
 </section><section class="card"><h2>Deskryptor zespolony</h2><p>Lokalny układ budynku z początkiem w centroidzie. Obrót podglądu nie zmienia wartości z ani v.</p>
 <div id="values"></div><div class="actions"><button class="btn" id="copy">Kopiuj model</button><button class="btn" id="json">Pobierz JSON</button><button class="btn" id="share">Share</button></div></section></div>
-<p class="foot">Prostokąty mogą mieć wspólne krawędzie, ale nie nakładają się powierzchniami. Dodawanie, przesuwanie i zmiana wymiarów zachowują spójność całego układu; usunięcie klocka rozłączającego układ jest blokowane.</p>
+<p class="foot">Prostokąty można przesuwać niezależnie, również rozłączając je; nie mogą nakładać się powierzchniami. Dodawanie, przesuwanie i zmiana wymiarów zachowują spójność całego układu; usunięcie klocka rozłączającego układ jest blokowane.</p>
 <script>
 const templates={
 I:[[-6,-24,12,48]],
@@ -181,11 +181,10 @@ const updated=valid(direct)?direct:resizeWithPush(drag.startBlocks,b.id,drag.edg
 if(updated){blocks=updated;notice('');render();}else notice('Nie można zmienić wymiaru bez rozłączenia lub nałożenia klocków.');
 return;
 }
-if(!others.length)return;
 const tx=p.x-drag.dx,ty=p.y-drag.dy;
-const opts=candidates(b,others,tx,ty);
-if(opts.length){const best=opts[0];b.x=best.x;b.y=best.y;notice('');render();}
-else notice('Brak położenia zachowującego spójność klocków.');
+const candidate={...b,x:tx,y:ty};
+if(!others.some(other=>overlap(candidate,other))){b.x=tx;b.y=ty;notice('');render();}
+else notice('Klocek nie może nachodzić na inny prostokąt.');
 });
 function endDrag(){if(!drag)return;drag=null;svg.classList.remove('dragging');render();}
 svg.addEventListener('pointerup',endDrag);svg.addEventListener('pointercancel',endDrag);svg.addEventListener('lostpointercapture',endDrag);
